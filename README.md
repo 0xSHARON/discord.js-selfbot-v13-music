@@ -12,7 +12,16 @@ A high-performance, stealth Discord Music Selfbot built with Node.js, `@discordj
 - **Dynamic Rich Presence (RPC)**: Automatically updates your Discord user profile activity with real-time "Listening to" status, track title, author, duration timestamps, YouTube album art, and an interactive "Listen on YouTube" button.
 - **24/7 Mode (`>247`)**: Keeps the bot connected indefinitely in voice channels or DM calls even after the queue finishes.
 - **Auto-Leave on Alone**: Automatically disconnects from voice channels or DM calls if all other users leave, saving bandwidth and mimicking natural human behavior (bypassed if 24/7 mode is enabled).
+- **Local Web Dashboard & Remote Controller**: Built-in sleek dark-mode glassmorphic browser controller (`http://localhost:3000`) for visual queue management, play/pause, scrub progress bar, volume slider, YouTube search, and real-time live console feeds.
 - **Audio Controls**: Full queue management, pause, resume, skip, looping, volume adjustment, and bassboost audio filter.
+
+---
+
+## Web Dashboard
+
+Access your local web controller anytime while the bot is running:
+- **URL**: `http://localhost:3000` (or `http://localhost:3001` if port 3000 is occupied)
+- **Controls**: Real-time play/pause, track skipping, timeline progress tracking, volume slider, 24/7 mode toggle, single-click track removal from queue, and live terminal activity monitoring.
 
 ---
 

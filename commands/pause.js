@@ -12,6 +12,7 @@ module.exports.run = async (client, message, args) => {
     if (serverQueue.player) {
         serverQueue.player.pause();
         serverQueue.playing = false;
+        serverQueue.pausedAt = Date.now();
         utils.log("Paused the music playback");
         return sendSafe("> `⏸️` **Music playback has been paused.**");
     }

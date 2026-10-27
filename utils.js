@@ -12,6 +12,7 @@ module.exports = {
     isFloat: function(n) {
         return ((typeof n === 'number') && (n % 1 !== 0));
     },
+    recentLogs: [],
     log: function(content) {
         const date_ob = new Date();
       
@@ -25,7 +26,19 @@ module.exports = {
         const dmy = date + "/" + month + "/" + year;
         const hms = date_ob.toLocaleTimeString();
       
-        console.log(`[ ${dmy} | ${hms} ] ${content}`);
+        const entry = `[ ${dmy} | ${hms} ] ${content}`;
+        console.log(entry);
+
+        if (!module.exports.recentLogs) module.exports.recentLogs = [];
+        module.exports.recentLogs.push({
+            time: hms,
+            date: dmy,
+            raw: entry,
+            message: content
+        });
+        if (module.exports.recentLogs.length > 100) {
+            module.exports.recentLogs.shift();
+        }
     },
     /**
      * @description Silent output logger that avoids sending any message to Discord
@@ -186,6 +199,9 @@ module.exports = {
             }
 
             serverQueue.playing = true;
+            serverQueue.startedAt = Date.now();
+            serverQueue.pausedAt = null;
+            serverQueue.totalPausedMs = 0;
             serverQueue.player.play(resource);
             utils.updatePresence(song);
         } catch (err) {
