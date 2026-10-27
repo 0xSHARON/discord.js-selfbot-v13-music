@@ -1,4 +1,4 @@
-// 0xSHARON Music Controller Client Logic
+// 0xSHARON INDUSTRIAL BRUTALIST AUDIO CONTROLLER
 
 let state = {
     online: false,
@@ -14,21 +14,19 @@ let state = {
     lastLogCount: 0
 };
 
-let localTimer = null;
-let pollInterval = null;
-
-// DOM Elements
+// DOM Selectors
 const userAvatar = document.getElementById('userAvatar');
 const userTag = document.getElementById('userTag');
-const botStatus = document.getElementById('botStatus');
+const botStatusLed = document.getElementById('botStatusLed');
 const voiceStatusPill = document.getElementById('voiceStatusPill');
 const voiceStatusText = document.getElementById('voiceStatusText');
 
 const coverArt = document.getElementById('coverArt');
 const visualizer = document.getElementById('visualizer');
+const streamCode = document.getElementById('streamCode');
 const trackTitle = document.getElementById('trackTitle');
 const trackArtist = document.getElementById('trackArtist');
-const requesterTag = document.getElementById('requesterTag');
+const requesterCol = document.getElementById('requesterCol');
 const requesterName = document.getElementById('requesterName');
 
 const progressFill = document.getElementById('progressFill');
@@ -40,10 +38,14 @@ const iconPlay = btnPlayPause.querySelector('.icon-play');
 const iconPause = btnPlayPause.querySelector('.icon-pause');
 const btnSkip = document.getElementById('btnSkip');
 const btnStop = document.getElementById('btnStop');
+
 const btnToggleLoop = document.getElementById('btnToggleLoop');
-const btnToggle247 = document.getElementById('btnToggle247');
-const stayBadge = document.getElementById('stayBadge');
+const lightLoop = document.getElementById('lightLoop');
 const loopBadge = document.getElementById('loopBadge');
+
+const btnToggle247 = document.getElementById('btnToggle247');
+const light247 = document.getElementById('light247');
+const stayBadge = document.getElementById('stayBadge');
 
 const volumeSlider = document.getElementById('volumeSlider');
 const volumeVal = document.getElementById('volumeVal');
@@ -60,26 +62,26 @@ const queueCount = document.getElementById('queueCount');
 const terminalLogs = document.getElementById('terminalLogs');
 const btnClearLogs = document.getElementById('btnClearLogs');
 const toast = document.getElementById('toast');
-const ambientGlow = document.getElementById('ambientGlow');
 
-// Time Formatter (seconds to mm:ss or hh:mm:ss)
+// Time Format: 00:00 or 00:00:00
 function formatTime(seconds) {
-    if (!seconds || isNaN(seconds) || seconds < 0) return '0:00';
+    if (!seconds || isNaN(seconds) || seconds < 0) return '00:00';
     const s = Math.floor(seconds);
     const mins = Math.floor(s / 60);
     const secs = s % 60;
+    const pad = n => (n < 10 ? '0' : '') + n;
     if (mins >= 60) {
         const hrs = Math.floor(mins / 60);
         const remMins = mins % 60;
-        return `${hrs}:${remMins < 10 ? '0' : ''}${remMins}:${secs < 10 ? '0' : ''}${secs}`;
+        return `${pad(hrs)}:${pad(remMins)}:${pad(secs)}`;
     }
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    return `${pad(mins)}:${pad(secs)}`;
 }
 
-// Notification Toast
+// Brutalist Alert Stamp
 let toastTimeout = null;
 function showToast(msg, duration = 3000) {
-    toast.textContent = msg;
+    toast.textContent = msg.toUpperCase();
     toast.classList.add('show');
     if (toastTimeout) clearTimeout(toastTimeout);
     toastTimeout = setTimeout(() => {
@@ -87,7 +89,7 @@ function showToast(msg, duration = 3000) {
     }, duration);
 }
 
-// Fetch Status from Backend
+// Poll Status from API
 async function fetchStatus() {
     try {
         const res = await fetch('/api/status');
@@ -95,12 +97,12 @@ async function fetchStatus() {
         const data = await res.json();
         updateUI(data);
     } catch (err) {
-        botStatus.textContent = 'Disconnected';
-        botStatus.style.color = '#f43f5e';
+        if (botStatusLed) botStatusLed.className = 'status-led';
+        userTag.textContent = 'OFFLINE // DISCONNECTED';
     }
 }
 
-// Update UI Components
+// Update UI
 function updateUI(data) {
     state.online = data.online;
     const user = data.user;
@@ -109,25 +111,24 @@ function updateUI(data) {
     const queue = data.queue || [];
     const logs = data.logs || [];
 
-    // Header User & Voice info
+    // Header & Identity
     if (user) {
-        userTag.textContent = user.tag;
+        userTag.textContent = user.tag.toUpperCase();
         if (user.avatar) userAvatar.src = user.avatar;
-        botStatus.textContent = 'Online & Active';
-        botStatus.style.color = '#10b981';
+        if (botStatusLed) botStatusLed.className = 'status-led online';
     } else {
-        userTag.textContent = 'Offline';
-        botStatus.textContent = 'Disconnected';
-        botStatus.style.color = '#f43f5e';
+        userTag.textContent = 'STANDBY // DISCONNECTED';
+        if (botStatusLed) botStatusLed.className = 'status-led';
     }
 
+    // Voice Link
     if (voice && voice.connected) {
         voiceStatusPill.classList.add('active');
-        const typeLabel = voice.channelType === 'DM' ? 'Direct Message Call' : 'Voice Channel';
-        voiceStatusText.textContent = `${voice.channelName} (${typeLabel})`;
+        const typeTag = voice.channelType === 'DM' ? 'DM_CALL' : 'VOICE_CH';
+        voiceStatusText.textContent = `${voice.channelName.toUpperCase()} [${typeTag}]`;
     } else {
         voiceStatusPill.classList.remove('active');
-        voiceStatusText.textContent = 'Not in voice / call';
+        voiceStatusText.textContent = 'STANDBY // UNLINKED';
     }
 
     // Playback State
@@ -140,72 +141,77 @@ function updateUI(data) {
     state.duration = playback.duration || 0;
     state.currentSong = playback.currentSong;
 
-    // Badges & Toggle button states
+    // 24/7 Flags
     if (state.stay247) {
+        stayBadge.textContent = '24/7::LOCK';
         stayBadge.classList.add('active');
         btnToggle247.classList.add('active');
     } else {
+        stayBadge.textContent = '24/7::DIS';
         stayBadge.classList.remove('active');
         btnToggle247.classList.remove('active');
     }
 
+    // Loop Flags
     if (state.loop) {
+        loopBadge.textContent = 'LOOP::ENGAGED';
         loopBadge.classList.add('active');
         btnToggleLoop.classList.add('active');
     } else {
+        loopBadge.textContent = 'LOOP::OFF';
         loopBadge.classList.remove('active');
         btnToggleLoop.classList.remove('active');
     }
 
-    // Play/Pause icon
+    // Action button state
     if (state.playing) {
         iconPlay.style.display = 'none';
-        iconPause.style.display = 'block';
+        iconPause.style.display = 'inline';
         visualizer.classList.add('active');
+        streamCode.textContent = 'STREAM::ACTIVE';
     } else {
-        iconPlay.style.display = 'block';
+        iconPlay.style.display = 'inline';
         iconPause.style.display = 'none';
         visualizer.classList.remove('active');
+        streamCode.textContent = state.paused ? 'STREAM::PAUSED' : 'STREAM::IDLE';
     }
 
-    // Track details
+    // Metadata
     if (state.currentSong) {
-        trackTitle.textContent = state.currentSong.title;
-        trackArtist.textContent = state.currentSong.author || 'YouTube';
+        trackTitle.textContent = state.currentSong.title.toUpperCase();
+        trackArtist.textContent = (state.currentSong.author || 'YOUTUBE_STREAM').toUpperCase();
         if (state.currentSong.thumbnail) {
             coverArt.src = state.currentSong.thumbnail;
         }
         if (state.currentSong.requestedby) {
-            requesterTag.style.display = 'inline-flex';
-            requesterName.textContent = state.currentSong.requestedby;
+            requesterCol.style.display = 'block';
+            requesterName.textContent = state.currentSong.requestedby.toUpperCase();
         } else {
-            requesterTag.style.display = 'none';
+            requesterCol.style.display = 'none';
         }
     } else {
-        trackTitle.textContent = 'No Music Playing';
-        trackArtist.textContent = 'Queue songs via Discord or search bar below';
+        trackTitle.textContent = 'STANDBY - NO CARRIER';
+        trackArtist.textContent = 'WAITING FOR INPUT STREAM';
         coverArt.src = 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600&auto=format&fit=crop&q=80';
-        requesterTag.style.display = 'none';
+        requesterCol.style.display = 'none';
     }
 
-    // Timeline Progress
+    // Progress timeline
     totalDuration.textContent = formatTime(state.duration);
     updateProgressDisplay();
 
-    // Volume Slider
+    // Volume readout
     if (document.activeElement !== volumeSlider) {
         volumeSlider.value = state.volume;
-        volumeVal.textContent = state.volume;
+        volumeVal.textContent = state.volume < 10 ? `0${state.volume}` : `${state.volume}`;
     }
 
-    // Render Queue
+    // Render Queue and Logs
     renderQueue(queue);
-
-    // Render Logs
     renderLogs(logs);
 }
 
-// Progress Display helper
+// Progress Display
 function updateProgressDisplay() {
     currentTime.textContent = formatTime(state.elapsedSeconds);
     if (state.duration > 0) {
@@ -216,48 +222,41 @@ function updateProgressDisplay() {
     }
 }
 
-// Render Up Next Queue
+// Render Queue Manifest
 function renderQueue(queue) {
     state.queue = queue;
-    queueCount.textContent = `${queue.length} song${queue.length === 1 ? '' : 's'}`;
+    const pad = n => (n < 10 ? '0' : '') + n;
+    queueCount.textContent = `${pad(queue.length)} ITEMS`;
 
     if (!queue || queue.length === 0) {
         queueEmpty.style.display = 'flex';
-        // Remove old queue item elements
-        const oldItems = queueList.querySelectorAll('.queue-item');
-        oldItems.forEach(el => el.remove());
+        const oldRows = queueList.querySelectorAll('.queue-row-brutal');
+        oldRows.forEach(el => el.remove());
         return;
     }
 
     queueEmpty.style.display = 'none';
-    
-    // Clear and re-populate
-    const oldItems = queueList.querySelectorAll('.queue-item');
-    oldItems.forEach(el => el.remove());
+    const oldRows = queueList.querySelectorAll('.queue-row-brutal');
+    oldRows.forEach(el => el.remove());
 
     queue.forEach((song, idx) => {
-        const item = document.createElement('div');
-        item.className = 'queue-item';
-        item.innerHTML = `
-            <span class="queue-num">#${idx + 1}</span>
-            <img src="${song.thumbnail || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=200&auto=format&fit=crop&q=80'}" alt="Thumb" class="queue-thumb">
-            <div class="queue-info">
-                <div class="queue-title" title="${song.title}">${song.title}</div>
-                <div class="queue-meta">${song.author || 'YouTube'} • ${formatTime(song.duration)}</div>
+        const row = document.createElement('div');
+        row.className = 'queue-row-brutal';
+        row.innerHTML = `
+            <span class="q-idx">#${pad(idx + 1)}</span>
+            <img src="${song.thumbnail || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=200&auto=format&fit=crop&q=80'}" alt="Thumb" class="q-thumb">
+            <div class="q-body">
+                <div class="q-title">${escapeHtml(song.title.toUpperCase())}</div>
+                <div class="q-artist">${escapeHtml((song.author || 'YOUTUBE').toUpperCase())}</div>
             </div>
-            <button class="btn-remove-track" data-index="${idx}" title="Remove from queue">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
+            <span class="q-time">${formatTime(song.duration)}</span>
+            <button class="btn-del-track" data-index="${idx}" title="ABORT TRACK">X</button>
         `;
-        queueList.appendChild(item);
+        queueList.appendChild(row);
     });
 
-    // Add click listeners to remove buttons
-    const removeButtons = queueList.querySelectorAll('.btn-remove-track');
-    removeButtons.forEach(btn => {
+    const removeBtns = queueList.querySelectorAll('.btn-del-track');
+    removeBtns.forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const index = e.currentTarget.getAttribute('data-index');
             await removeTrack(index);
@@ -265,7 +264,7 @@ function renderQueue(queue) {
     });
 }
 
-// Render Terminal Logs
+// Render Terminal Telemetry
 function renderLogs(logs) {
     if (!logs || logs.length === 0) return;
     if (logs.length === state.lastLogCount) return;
@@ -273,21 +272,21 @@ function renderLogs(logs) {
 
     terminalLogs.innerHTML = '';
     logs.forEach(entry => {
-        const line = document.createElement('div');
-        line.className = 'log-line';
-        line.innerHTML = `<span class="log-time">[${entry.time || ''}]</span> ${escapeHtml(entry.message || entry.raw || '')}`;
-        terminalLogs.appendChild(line);
+        const div = document.createElement('div');
+        div.className = 'log-entry';
+        div.innerHTML = `<span class="log-time">[${entry.time || ''}]</span> ${escapeHtml(entry.message || entry.raw || '')}`;
+        terminalLogs.appendChild(div);
     });
     terminalLogs.scrollTop = terminalLogs.scrollHeight;
 }
 
 function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    const d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
 }
 
-// Dispatch Action to API
+// Dispatch Control Action
 async function sendAction(action) {
     try {
         const res = await fetch('/api/action', {
@@ -297,12 +296,12 @@ async function sendAction(action) {
         });
         const data = await res.json();
         if (!data.success) {
-            showToast(`⚠️ ${data.message || 'Action failed'}`);
+            showToast(`ERR // ${data.message || 'ACTION_REJECTED'}`);
         } else {
             fetchStatus();
         }
     } catch (err) {
-        showToast(`❌ Network error: ${err.message}`);
+        showToast(`FATAL // NETWORK_FAIL: ${err.message}`);
     }
 }
 
@@ -316,48 +315,48 @@ async function removeTrack(index) {
         });
         const data = await res.json();
         if (data.success) {
-            showToast(`🗑️ Removed: ${data.removed?.title || 'Track'}`);
+            showToast(`PURGED // TRACK_EXPELLED`);
             fetchStatus();
         } else {
-            showToast(`⚠️ ${data.message || 'Could not remove track'}`);
+            showToast(`ERR // ${data.message || 'PURGE_FAILED'}`);
         }
     } catch (err) {
-        showToast(`❌ Error: ${err.message}`);
+        showToast(`FATAL // ${err.message}`);
     }
 }
 
-// Event Listeners
+// Button Events
 btnPlayPause.addEventListener('click', () => sendAction('play_pause'));
 btnSkip.addEventListener('click', () => sendAction('skip'));
 btnStop.addEventListener('click', () => sendAction('stop'));
 btnToggleLoop.addEventListener('click', () => sendAction('toggle_loop'));
 btnToggle247.addEventListener('click', () => sendAction('toggle_247'));
 
-// Debounced Volume Slider
-let volumeDebounce = null;
+// Volume Slider
+let volTimer = null;
 volumeSlider.addEventListener('input', (e) => {
-    const val = e.target.value;
-    volumeVal.textContent = val;
-    if (volumeDebounce) clearTimeout(volumeDebounce);
-    volumeDebounce = setTimeout(async () => {
+    const val = parseInt(e.target.value, 10);
+    volumeVal.textContent = val < 10 ? `0${val}` : `${val}`;
+    if (volTimer) clearTimeout(volTimer);
+    volTimer = setTimeout(async () => {
         try {
             await fetch('/api/volume', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ volume: val })
             });
-        } catch (err) {}
+        } catch (e) {}
     }, 200);
 });
 
-// Search & Add Track Form
+// Enqueue Search Form
 searchForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const query = searchInput.value.trim();
     if (!query) return;
 
     btnAddQueue.disabled = true;
-    searchSpinner.style.display = 'block';
+    searchSpinner.style.display = 'inline';
 
     try {
         const res = await fetch('/api/play', {
@@ -368,25 +367,25 @@ searchForm.addEventListener('submit', async (e) => {
         const data = await res.json();
         if (data.success) {
             searchInput.value = '';
-            showToast(`✅ Added: ${data.song.title}`);
+            showToast(`ENQUEUED // ${data.song.title}`);
             fetchStatus();
         } else {
-            showToast(`⚠️ ${data.message || 'Failed to add track'}`);
+            showToast(`ERR // ${data.message || 'ENQUEUE_REJECTED'}`);
         }
     } catch (err) {
-        showToast(`❌ Error adding song: ${err.message}`);
+        showToast(`FATAL // ${err.message}`);
     } finally {
         btnAddQueue.disabled = false;
         searchSpinner.style.display = 'none';
     }
 });
 
-// Clear Logs
+// Purge Terminal Logs
 btnClearLogs.addEventListener('click', () => {
-    terminalLogs.innerHTML = '<div class="log-line text-muted">[Console cleared]</div>';
+    terminalLogs.innerHTML = '<div class="log-entry">// TELEMETRY LOG BUFFER PURGED.</div>';
 });
 
-// Local Second Progress Ticker
+// Local 1s Progress Ticker
 setInterval(() => {
     if (state.playing && !state.paused && state.duration > 0) {
         if (state.elapsedSeconds < state.duration) {
@@ -396,6 +395,6 @@ setInterval(() => {
     }
 }, 1000);
 
-// Status Poller (every 1200ms)
+// Status Poller
 fetchStatus();
-pollInterval = setInterval(fetchStatus, 1200);
+setInterval(fetchStatus, 1200);
